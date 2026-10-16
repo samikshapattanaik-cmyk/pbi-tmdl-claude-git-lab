@@ -76,3 +76,5 @@ pbi-tmdl-claude-git-lab/
 ├── .gitignore                       # Ignores local user settings and cache files (.pbi/)
 └── README.md                        # Project documentation
 
+<img width="1280" height="720" alt="GItpowerBi-ezgif com-video-to-gif-converter" src="https://github.com/user-attachments/assets/788a1d64-0d3c-43e2-aa40-be4ad8eecd50" />
+
