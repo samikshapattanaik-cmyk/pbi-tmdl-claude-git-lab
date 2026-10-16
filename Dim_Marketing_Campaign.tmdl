@@ -1,0 +1,58 @@
+table Dim_Marketing_Campaign
+	lineageTag: ea1c5f0f-f678-4b73-8f63-6a24df83cdec
+
+	column marketing_key
+		dataType: string
+		lineageTag: eb408e34-d7a1-4968-84db-940769eefd40
+		summarizeBy: none
+		sourceColumn: marketing_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column Custom_Campaign_Name
+		dataType: string
+		lineageTag: 538ab325-3541-48d7-bc31-461aaac04176
+		summarizeBy: none
+		sourceColumn: Custom_Campaign_Name
+
+		annotation SummarizationSetBy = Automatic
+
+	column marketing_medium
+		dataType: string
+		lineageTag: 3208d2ed-f2d7-4fa5-bb2a-b876ef5f4090
+		summarizeBy: none
+		sourceColumn: marketing_medium
+
+		annotation SummarizationSetBy = Automatic
+
+	column campaign_marketing_source
+		dataType: string
+		lineageTag: cf34e7ae-d515-4390-91e3-05007e257796
+		summarizeBy: none
+		sourceColumn: marketing_source
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Dim_Marketing_Campaign = m
+		mode: import
+		source =
+				let
+				    Source = Value.NativeQuery(GoogleBigQuery.Database([Implementation="2.0"]){[Name="ecommerce"]}[Data], "SELECT#(lf)  -- 1. Core Event Dimensions#(lf)  PARSE_DATE('%Y%m%d', event_date) AS event_date,#(lf)  TIMESTAMP_MICROS(event_timestamp) AS event_timestamp,#(lf)  event_name,                                      -- Identifies: session_start, add_to_cart, purchase, etc.#(lf)  user_pseudo_id AS customer_id,#(lf)#(lf)  -- 2. Session ID Unnesting (Web Analytics Core)#(lf)  (#(lf)    SELECT value.int_value #(lf)    FROM UNNEST(event_params) #(lf)    WHERE key = 'ga_session_id'#(lf)  ) AS session_id,#(lf)#(lf)  -- 3. Web Traffic Sources & Marketing Channels#(lf)  traffic_source.name AS campaign_name,#(lf)  traffic_source.medium AS marketing_medium,       -- organic, cpc, affiliate, email#(lf)  traffic_source.source AS marketing_source,       -- google, facebook, newsletter#(lf)  #(lf)  -- 4. Device Dimensions (Friction Analysis)#(lf)  device.category AS device_category,             -- mobile, desktop, tablet#(lf)  device.operating_system AS device_os,#(lf)  device.web_info.browser AS browser,#(lf)#(lf)  -- 5. Nested E-commerce Metrics (Newly Added)#(lf)  -- GA4 stores transaction values at the event level for 'purchase' events#(lf)  ecommerce.transaction_id AS transaction_id,#(lf)  COALESCE(ecommerce.purchase_revenue_in_usd, 0) AS total_purchase_revenue,#(lf)#(lf)  -- 6. Item-Level Unnesting (Product & Pricing Details)#(lf)  -- This extracts the specific products interacting with the event#(lf)  items.item_id AS product_id,#(lf)  items.item_name AS product_name,#(lf)  items.item_category AS product_category,#(lf)  COALESCE(items.price_in_usd, 0) AS item_price,#(lf)  COALESCE(items.quantity, 0) AS item_quantity#(lf)#(lf)FROM#(lf)  `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,#(lf)  UNNEST(items) AS items                           -- Unnests the item array so product-level metrics are flattened#(lf)WHERE#(lf)  event_name IN ('session_start', 'view_item', 'add_to_cart', 'begin_checkout', 'purchase')#(lf)  AND _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'", null, [EnableFolding=true]),
+				    #"Added Custom" = Table.AddColumn(Source, "Custom_Campaign_Name", each if [marketing_medium] = "cpc" and [marketing_source] = "google" then "Paid_Search"
+				else if [marketing_medium] = "organic" then "Organic Search"
+				else if [marketing_medium] = "referral" and [marketing_source] = "shop.googlemerchandisestore.com" then "Referrals"
+				else if [marketing_medium] = "referral" then "Affiliate"
+				else if [marketing_medium] = "(data deleted)" or [marketing_source] = "(data deleted)" then "Unmapped Legacy Sessions"
+				else if [marketing_medium] = "(none)" or [marketing_source] = "(direct)" then "Direct"
+				else if [marketing_medium] <> null and [marketing_source] <> null then "Partnerships"
+				else [campaign_name]),
+				    #"Added Custom1" = Table.AddColumn(#"Added Custom", "marketing_key", each [marketing_source] & "|" & [marketing_medium] & "|" & [campaign_name]),
+				    #"Removed Other Columns" = Table.SelectColumns(#"Added Custom1",{"marketing_key", "Custom_Campaign_Name", "marketing_medium", "marketing_source"}),
+				    #"Removed Duplicates" = Table.Distinct(#"Removed Other Columns", {"marketing_key"})
+				in
+				    #"Removed Duplicates"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Exception
+

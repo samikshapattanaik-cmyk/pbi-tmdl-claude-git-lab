@@ -1,0 +1,26 @@
+table 'Top N Landing Pages'
+	lineageTag: 3784e4d4-5515-4822-8823-2c9147ee511f
+
+	measure 'Top N Landing Pages Value' = SELECTEDVALUE('Top N Landing Pages'[Top N Landing Pages], 10)
+		formatString: 0
+		lineageTag: a95ab72d-0f28-494b-a1bc-2a9a782b1f07
+
+	column 'Top N Landing Pages'
+		formatString: 0
+		lineageTag: 446a5ecf-5749-4844-83de-eb3b8781987d
+		summarizeBy: none
+		sourceColumn: [Value]
+
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 0
+				}
+
+		annotation SummarizationSetBy = User
+
+	partition 'Top N Landing Pages' = calculated
+		mode: import
+		source = GENERATESERIES(5, 20, 5)
+
+	annotation PBI_Id = 2568e7a950d64669aa56e7e080746df1
+

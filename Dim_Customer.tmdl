@@ -1,0 +1,38 @@
+table Dim_Customer
+	lineageTag: 57cf9f29-6fd0-47d7-a149-018b0b937c7f
+
+	column customer_id
+		dataType: string
+		lineageTag: 29e302ed-923b-44bb-a74a-443b3df7ac44
+		summarizeBy: none
+		sourceColumn: customer_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column first_active_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: b596af3b-2175-490a-a41b-7a1794c06528
+		summarizeBy: none
+		sourceColumn: first_active_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition Dim_Customer = m
+		mode: import
+		source =
+				let
+					Source = Value.NativeQuery(GoogleBigQuery.Database([Implementation="2.0"]){[Name="ecommerce"]}[Data], "SELECT#(lf)  -- 1. Core Event Dimensions#(lf)  PARSE_DATE('%Y%m%d', event_date) AS event_date,#(lf)  TIMESTAMP_MICROS(event_timestamp) AS event_timestamp,#(lf)  event_name,                         -- Identifies: session_start, add_to_cart, purchase, etc.#(lf)  user_pseudo_id AS customer_id,#(lf)#(lf)  -- 2. Session ID Unnesting (Web Analytics Core)#(lf)  (#(lf)    SELECT value.int_value #(lf)    FROM UNNEST(event_params) #(lf)    WHERE key = 'ga_session_id'#(lf)  ) AS session_id,#(lf)#(lf)  -- 3. Web Traffic Sources & Marketing Channels#(lf)  traffic_source.name AS campaign_name,#(lf)  traffic_source.medium AS marketing_medium,       -- organic, cpc, affiliate, email#(lf)  traffic_source.source AS marketing_source,       -- google, facebook, newsletter#(lf)  #(lf)  -- 4. Device Dimensions (Friction Analysis)#(lf)  device.category AS device_category,              -- mobile, desktop, tablet#(lf)  device.operating_system AS device_os,#(lf)  device.web_info.browser AS browser,#(lf)#(lf)  -- 5. Nested E-commerce Metrics (Newly Added)#(lf)  -- GA4 stores transaction values at the event level for 'purchase' events#(lf)  ecommerce.transaction_id AS transaction_id,#(lf)  COALESCE(ecommerce.purchase_revenue_in_usd, 0) AS total_purchase_revenue,#(lf)#(lf)  -- 6. Item-Level Unnesting (Product & Pricing Details)#(lf)  -- This extracts the specific products interacting with the event#(lf)  items.item_id AS product_id,#(lf)  items.item_name AS product_name,#(lf)  items.item_category AS product_category,#(lf)  COALESCE(items.price_in_usd, 0) AS item_price,#(lf)  COALESCE(items.quantity, 0) AS item_quantity#(lf)FROM#(lf)  `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,#(lf)  UNNEST(items) AS items                       -- Unnests the item array so product-level metrics are flattened#(lf)WHERE#(lf)  event_name IN ('session_start', 'view_item', 'add_to_cart', 'begin_checkout', 'purchase')#(lf)  AND _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'", null, [EnableFolding=true]),
+					#"Removed Columns" = Table.RemoveColumns(Source,{"event_timestamp", "event_name", "session_id", "campaign_name", "marketing_medium", "marketing_source", "device_category", "device_os", "browser"}),
+					#"Reordered Columns" = Table.ReorderColumns(#"Removed Columns",{"customer_id", "event_date"}),
+					#"Grouped Rows" = Table.Group(#"Reordered Columns", {"customer_id"}, {{"first_active_date", each List.Min([event_date]), type nullable date}}),
+					#"Removed Duplicates" = Table.Distinct(#"Grouped Rows", {"customer_id"})
+				in
+					#"Removed Duplicates"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

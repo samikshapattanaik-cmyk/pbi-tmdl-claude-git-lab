@@ -1,0 +1,96 @@
+table fact_Sessions
+	lineageTag: 2e39a69d-1bb7-42a2-b70a-0cedc67b8c2e
+
+	column event_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: c81cf38f-8413-4761-8e57-d20af1ffa851
+		summarizeBy: none
+		sourceColumn: event_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column customer_id
+		dataType: string
+		lineageTag: d1ff7a42-534f-4819-a72a-1ffbecd680a9
+		summarizeBy: none
+		sourceColumn: customer_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column session_id
+		dataType: int64
+		formatString: 0
+		lineageTag: d6ebab0b-45af-46af-927c-1751ad6e4c24
+		summarizeBy: sum
+		sourceColumn: session_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column session_engaged
+		dataType: double
+		formatString: 0
+		lineageTag: c59b2c3e-c499-46e2-b77b-b90eaa3162dd
+		summarizeBy: sum
+		sourceColumn: session_engaged
+
+		annotation SummarizationSetBy = Automatic
+
+	column device_category
+		dataType: string
+		lineageTag: 75861457-c7b9-4186-b73e-67edf5c439d0
+		summarizeBy: none
+		sourceColumn: device_category
+
+		annotation SummarizationSetBy = Automatic
+
+	column device_os
+		dataType: string
+		lineageTag: 5fbbe012-c2f6-44b7-8cb2-a8325bf43695
+		summarizeBy: none
+		sourceColumn: device_os
+
+		annotation SummarizationSetBy = Automatic
+
+	column browser
+		dataType: string
+		lineageTag: 171d1bbb-e785-4855-ace2-da250d80dbca
+		summarizeBy: none
+		sourceColumn: browser
+
+		annotation SummarizationSetBy = Automatic
+
+	column marketing_key
+		dataType: string
+		lineageTag: 4fe19ed2-da23-4310-802c-29b17c1cc102
+		summarizeBy: none
+		sourceColumn: marketing_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column landing_page
+		dataType: string
+		lineageTag: be7308ab-decb-43cd-b7e1-2f7f3bb6a709
+		summarizeBy: none
+		sourceColumn: landing_page
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fact_Sessions = m
+		mode: import
+		source =
+				let
+				    Source = GA4_Raw_Data,
+				    #"Removed Other Columns" = Table.SelectColumns(Source,{"event_date", "customer_id", "session_id", "session_engaged", "device_category", "device_os", "browser", "Clean landing page ", "marketing_key"}),
+				    #"Inserted Merged Column" = Table.AddColumn(#"Removed Other Columns", "Session_customer_key", each Text.Combine({[customer_id], "-", Text.From([session_id], "en-NZ"), " "}), type text),
+				    #"Renamed Columns" = Table.RenameColumns(#"Inserted Merged Column",{{"Clean landing page ", "landing page"}}),
+				    #"Grouped Rows" = Table.Group(#"Renamed Columns", {"session_id", "customer_id", "device_category", "device_os", "browser", "marketing_key"}, {{"event_date", each List.Min([event_date]), type nullable date}, {"landing_page", each List.Min([landing page]), type text}, {"session_engaged", each List.Max([session_engaged]), type nullable number}})
+				in
+				    #"Grouped Rows"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

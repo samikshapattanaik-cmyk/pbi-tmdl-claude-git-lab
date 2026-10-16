@@ -1,0 +1,164 @@
+table 'Measures (2)'
+	lineageTag: f24fd3ad-4426-44b6-8165-6f33e432e392
+
+	measure total_sessions = COUNTROWS(fact_sessions)
+		formatString: #,0
+		lineageTag: 6288b3be-daaa-4c8a-a886-864684efe1e7
+
+	measure 'Engaged Session Rate %' =
+			
+			DIVIDE(
+			    CALCULATE([total_Sessions], fact_sessions[session_engaged] = 1),
+			    [total_Sessions]
+			)
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: cc72062d-4d72-47f1-826d-d271662a3c62
+	
+	
+	measure 'New Users' = ```
+			
+			CALCULATE(
+			    DISTINCTCOUNT(dim_customer[customer_id]),
+			    USERELATIONSHIP(dim_customer[first_active_date], dim_date[Date]),
+			    CROSSFILTER(fact_Sessions[customer_id], dim_customer[customer_id], Both)
+			)
+			
+			```
+		formatString: 0
+		lineageTag: dc227372-a412-49f0-93ae-546c9903ab17
+
+	measure Total_users = DISTINCTCOUNT(fact_Sessions[customer_id])
+		formatString: #,0
+		lineageTag: e0970fe5-10a1-4ef5-b5a6-391484f8aa83
+
+	measure KPI_Color_Sessions_PoP = ```
+			
+			VAR RawVal = 
+			    CALCULATE(
+			        [total_sessions], 
+			        REMOVEFILTERS('Metric Metric Type'),
+			        'Metric Metric Type'[Type] = "% Change DoD"
+			    )
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(RawVal), "#666666",
+			        RawVal > 0, "#2E7D32", // Green
+			        RawVal < 0, "#C62828", // Red
+			        "#666666"             // Grey
+			    )
+			```
+		lineageTag: 79833ea9-37d4-4116-8a2c-ee43343282ec
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure Value = SELECTEDMEASURE()
+		lineageTag: 89b70654-d9d8-47b3-bf87-1436429eb0e9
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure Dynamic_Chart_Headline = ```
+			
+			VAR RawSelectedMetric = 
+			    SELECTEDVALUE(
+			        'Metric Selector'[Calculation group column], 
+			        "Sessions"
+			    )
+			
+			-- Find the position of the first space after the icon
+			VAR SpacePosition = SEARCH(" ", RawSelectedMetric, 1, 0)
+			
+			-- Extract only the metric text (stripping out the icon and leading/trailing spaces)
+			VAR CleanedMetric = 
+			    IF(
+			        SpacePosition > 0, 
+			        TRIM(MID(RawSelectedMetric, SpacePosition + 1, LEN(RawSelectedMetric))), 
+			        RawSelectedMetric
+			    )
+			
+			VAR WideSpace = REPT(UNICHAR(160), 78) -- Adjust spaces for layout width
+			
+			RETURN
+			    CleanedMetric & " By Channel Over Time " & WideSpace & CleanedMetric & " By Device & Browser"
+			```
+		lineageTag: 30a1ea46-19a3-49a2-b8c0-5bf867c88fdd
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Engaged Session' = ```
+			
+			CALCULATE(
+			    [total_Sessions],
+			    fact_sessions[session_engaged] = 1
+			)
+			
+			```
+		formatString: #,0.00
+		lineageTag: 0b20a018-e738-4875-98f5-db2e061fe263
+
+	measure Rank_Landing_Pages =
+			
+			IF(
+			    HASONEVALUE('fact_sessions'[landing_page]),
+			    RANKX(
+			        ALLSELECTED('fact_sessions'[landing_page]),
+			        [total_sessions],
+			        ,
+			        DESC,
+			        Dense
+			    )
+			)
+		lineageTag: 24ed2dee-1c15-4c8c-aec1-b78b88d71dd7
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure Is_In_Top_N = ```
+			
+			VAR CurrentRank = [Rank_Landing_Pages]
+			VAR SelectedTopN = [Top N Landing Pages Value]
+			RETURN
+			    IF(
+			        NOT(ISBLANK(CurrentRank)) && CurrentRank <= SelectedTopN, 
+			        1, 
+			        0
+			    )
+			```
+		formatString: 0
+		lineageTag: a17351f4-f4a0-44a8-9af0-b5fe9d640a30
+
+	measure 'Organic Sessions' =
+			CALCULATE(
+			    [total_sessions],
+			    Dim_Marketing_Campaign[Custom_Campaign_Name] = "Organic Search"
+			)
+		formatString: #,##0
+		displayFolder: Channel Performance
+
+	measure 'Direct Sessions' =
+			CALCULATE(
+			    [total_sessions],
+			    Dim_Marketing_Campaign[Custom_Campaign_Name] = "Direct"
+			)
+		formatString: #,##0
+		displayFolder: Channel Performance
+
+	measure 'Paid Search Sessions' =
+			CALCULATE(
+			    [total_sessions],
+			    Dim_Marketing_Campaign[Custom_Campaign_Name] = "Paid_Search"
+			)
+		formatString: #,##0
+		displayFolder: Channel Performance
+
+	partition 'Measures (2)' = m
+		mode: import
+		source =
+				let
+				    Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i44FAA==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [#"null" = _t]),
+				    #"Changed Type" = Table.TransformColumnTypes(Source,{{"null", type text}}),
+				    #"Removed Columns" = Table.RemoveColumns(#"Changed Type",{"null"})
+				in
+				    #"Removed Columns"
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,102 @@
+table Dim_Date
+	lineageTag: 484b00d4-64fd-429f-a70c-09be6b124845
+
+	column Date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 877300f2-ed30-42d7-b9fb-815846d2ef7a
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Date]
+
+		variation Variation
+			isDefault
+			relationship: 59a7c0b1-3d41-437a-a42d-5db3d8170c6a
+			defaultHierarchy: LocalDateTable_87c1471b-3b23-4ff0-8c26-33eee88a77e2.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Year
+		dataType: int64
+		formatString: 0
+		lineageTag: cef68e32-deec-4c5d-b9bc-05ac26d3ffe3
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Year]
+
+		annotation SummarizationSetBy = Automatic
+
+	column MonthNum
+		dataType: int64
+		formatString: 0
+		lineageTag: 74552c18-4092-4bfe-a56c-7e83c1e5db1e
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [MonthNum]
+
+		annotation SummarizationSetBy = Automatic
+
+	column MonthName
+		dataType: string
+		lineageTag: ffbc1d61-ba85-45f1-ae2a-440d64483f8b
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [MonthName]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Quarter
+		dataType: string
+		lineageTag: cbaef75c-8720-496b-aff8-f943ebbf116e
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Quarter]
+
+		annotation SummarizationSetBy = Automatic
+
+	column WeekNum
+		dataType: int64
+		formatString: 0
+		lineageTag: e75cd138-c919-4f70-b629-3b9d75134647
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [WeekNum]
+
+		annotation SummarizationSetBy = Automatic
+
+	column DayOfWeek
+		dataType: string
+		lineageTag: 0de9a58b-1f6c-41dd-89f8-eabf080d61b4
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [DayOfWeek]
+
+		annotation SummarizationSetBy = Automatic
+
+	column IsWeekend
+		dataType: string
+		lineageTag: a07251cc-fdef-4716-ad75-011a8acf447e
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [IsWeekend]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Dim_Date = calculated
+		mode: import
+		source =
+				ADDCOLUMNS (
+					CALENDAR ( DATE ( 2020, 11, 1 ), DATE ( 2021, 1, 31 ) ),
+					"Year", YEAR ( [Date] ),
+					"MonthNum", MONTH ( [Date] ),
+					"MonthName", FORMAT ( [Date], "MMM" ),
+					"Quarter", "Q" & FORMAT ( [Date], "Q" ),
+					"WeekNum", WEEKNUM ( [Date] ),
+					"DayOfWeek", FORMAT ( [Date], "dddd" ),
+					"IsWeekend", IF ( WEEKDAY ( [Date], 2 ) > 5, "Weekend", "Weekday" )
+				)
+
+	annotation PBI_Id = 8975b0dd4db64028ab1958394c6101ae
+

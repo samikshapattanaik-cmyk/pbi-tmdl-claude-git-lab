@@ -1,0 +1,40 @@
+table 'Metric Metric Type'
+	lineageTag: 34e459d2-019b-499c-a5cf-ccfadc649017
+
+	calculationGroup
+		precedence: 1
+
+		calculationItem Value = SELECTEDMEASURE()
+
+		calculationItem '% Change DoD' = ```
+				VAR NumOfDays = COUNTROWS('Dim_Date')
+				VAR CurrentVal = SELECTEDMEASURE()
+				VAR PriorVal = 
+				    CALCULATE(
+				        SELECTEDMEASURE(),
+				        DATEADD('Dim_Date'[Date], -NumOfDays, DAY)
+				    )
+				RETURN
+				    DIVIDE(CurrentVal - PriorVal, PriorVal)
+				```
+
+			formatStringDefinition = "+0% ▲;-0% ▼;0%"
+
+	column Type
+		dataType: string
+		lineageTag: 0f591c2c-dfb6-49d7-a4ae-8a4d042712d5
+		summarizeBy: none
+		sourceColumn: Name
+		sortByColumn: Ordinal
+
+		annotation SummarizationSetBy = Automatic
+
+	column Ordinal
+		dataType: int64
+		formatString: 0
+		lineageTag: 3a45540d-117e-4d5d-b724-aeed6d520713
+		summarizeBy: sum
+		sourceColumn: Ordinal
+
+		annotation SummarizationSetBy = Automatic
+
